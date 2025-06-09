@@ -1,0 +1,53 @@
+sources:
+  # 科技类新闻
+  - name: "36氪"
+    url: "https://36kr.com/feed"
+    type: "text"
+    category: "tech"
+    
+  - name: "少数派"
+    url: "https://sspai.com/feed"
+    type: "text"
+    category: "tech"
+
+  - name: "虎嗅"
+    url: "https://plink.anyfeeder.com/huxiu"
+    type: "text"
+    category: "tech"
+    
+  - name: "meetingcpp"
+    url: "https://meetingcpp.com/feed.xml"
+    type: "text"
+    category: "tech"
+  
+  # 综合新闻
+  - name: "中新网国际新闻"
+    url: "https://www.chinanews.com.cn/rss/world.xml"
+    type: "text"
+    category: "news"
+    
+  # 图片类新闻
+  - name: "国家地理中文网"
+    url: "https://www.ngchina.com.cn/rss/"
+    type: "image"
+    category: "photo"
+
+rules:
+  # 内容过滤
+  content_filters:
+    - pattern: "广告"
+      action: "exclude"
+    
+  # 内容提取
+  content_extractors:
+    title:
+      max_length: 100
+    summary:
+      max_length: 500
+    
+  # 图片处理
+  image_processing:
+    max_width: 800
+    max_height: 600
+    format: "JPEG"
+    quality: 85
