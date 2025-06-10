@@ -2,14 +2,39 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import json
+import requests
+import sys
 from typing import Dict, List, Any
-from dashscope import Generation
 import markdown2  # 添加markdown转换库
+
+# 检查Python版本
+PY_VERSION = sys.version_info
+USE_DASHSCOPE_SDK = PY_VERSION >= (3, 8)
+
+# 根据Python版本导入dashscope
+if USE_DASHSCOPE_SDK:
+    try:
+        from dashscope import Generation
+        DASHSCOPE_IMPORT_ERROR = None
+    except ImportError as e:
+        DASHSCOPE_IMPORT_ERROR = str(e)
+        USE_DASHSCOPE_SDK = False
 
 class Summarizer:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.logger = logging.getLogger(__name__)
+        self.api_url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+        
+        # 记录使用的API方式
+        if USE_DASHSCOPE_SDK:
+            self.logger.info("使用DashScope SDK进行API调用")
+        else:
+            if DASHSCOPE_IMPORT_ERROR:
+                self.logger.warning(f"DashScope SDK导入失败 ({DASHSCOPE_IMPORT_ERROR})，将使用HTTP API")
+            else:
+                self.logger.info(f"Python版本 {sys.version.split()[0]} 不支持DashScope SDK，将使用HTTP API")
         
     def generate_summary(self, news_items: List[Dict[str, Any]]) -> str:
         """生成新闻摘要"""
@@ -72,14 +97,26 @@ class Summarizer:
         """生成单个分类的新闻摘要"""
         try:
             # 准备提示词
+            prompt = self._prepare_prompt(category, items)
             messages = [
                 {'role': 'system', 'content': 'You are a helpful assistant.'},
-                {'role': 'user', 'content': self._prepare_prompt(category, items)}
+                {'role': 'user', 'content': prompt}
             ]
-            self.logger.info(f"准备调用通义千问API生成 {category} 类摘要")
-            print(messages)
             
-            # 调用通义千问API
+            self.logger.info(f"准备调用通义千问API生成 {category} 类摘要")
+            
+            if USE_DASHSCOPE_SDK:
+                return self._generate_using_sdk(category, messages)
+            else:
+                return self._generate_using_http(category, messages)
+                
+        except Exception as e:
+            self.logger.error(f"生成分类摘要时出错: {str(e)}")
+            return f"## {category}\n\n摘要生成失败，请稍后重试。"
+    
+    def _generate_using_sdk(self, category: str, messages: List[Dict[str, str]]) -> str:
+        """使用SDK生成摘要"""
+        try:
             response = Generation.call(
                 model='qwen-turbo',
                 messages=messages,
@@ -91,18 +128,65 @@ class Summarizer:
             )
             
             if response.status_code == 200:
-                self.logger.info(f"{category} 类摘要生成成功，响应成功")
-                print(response)
                 summary = response.output.choices[0].message.content
                 self.logger.info(f"{category} 类摘要生成成功，长度: {len(summary)} 字符")
                 return summary
             else:
                 self.logger.error(f"API调用失败: {response.code} - {response.message}")
                 return f"## {category}\n\n摘要生成失败，请稍后重试。"
-                
         except Exception as e:
-            self.logger.error(f"生成分类摘要时出错: {str(e)}")
-            return f"## {category}\n\n摘要生成失败，请稍后重试。"
+            self.logger.error(f"SDK调用出错: {str(e)}")
+            return f"## {category}\n\n摘要生成失败，SDK调用异常。"
+    
+    def _generate_using_http(self, category: str, messages: List[Dict[str, str]]) -> str:
+        """使用HTTP API生成摘要"""
+        try:
+            # 准备请求头
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "X-DashScope-Algorithm": "qwen-turbo"
+            }
+            
+            # 准备请求体
+            data = {
+                "model": "qwen-turbo",
+                "input": {
+                    "messages": messages
+                },
+                "parameters": {
+                    "max_tokens": 1500,
+                    "temperature": 0.7,
+                    "top_p": 0.8,
+                    "result_format": "message"
+                }
+            }
+            
+            # 发送请求
+            response = requests.post(
+                self.api_url,
+                headers=headers,
+                json=data,
+                timeout=30
+            )
+            
+            # 处理响应
+            if response.status_code == 200:
+                result = response.json()
+                if "output" in result and "choices" in result["output"]:
+                    summary = result["output"]["choices"][0]["message"]["content"]
+                    self.logger.info(f"{category} 类摘要生成成功，长度: {len(summary)} 字符")
+                    return summary
+                else:
+                    self.logger.error(f"API响应格式异常: {result}")
+                    return f"## {category}\n\n摘要生成失败，API响应格式异常。"
+            else:
+                self.logger.error(f"API调用失败: {response.status_code} - {response.text}")
+                return f"## {category}\n\n摘要生成失败，请稍后重试。"
+                
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"HTTP请求异常: {str(e)}")
+            return f"## {category}\n\n摘要生成失败，HTTP请求异常。"
             
     def _prepare_prompt(self, category: str, items: List[Dict[str, Any]]) -> str:
         """准备提示词"""
@@ -134,7 +218,7 @@ class Summarizer:
    - 重要新闻使用无序列表(-)
    - 关键数据或重要引用使用粗体(**)标记
    - 每条新闻之间使用空行分隔
-   - 需要用[链接]给出新闻的原始链接，如果无链接，则指出“原始链接缺失”
+   - 需要用[链接]给出新闻的原始链接，如果无链接，则指出"原始链接缺失"
 
 以下是需要总结的新闻：
 

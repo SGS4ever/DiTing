@@ -1,0 +1,21 @@
+# 基础依赖
+python-dotenv==0.19.2  # 最后支持Python 3.6的版本
+PyYAML==5.4.1  # 最后支持Python 3.6的版本
+schedule==1.1.0  # 最后支持Python 3.6的版本
+
+# RSS解析相关
+feedparser==6.0.10  # 最后支持Python 3.6的版本
+requests==2.27.1  # 最后支持Python 3.6的版本
+beautifulsoup4==4.9.3  # 最后支持Python 3.6的版本
+
+# 图像处理
+Pillow==8.4.0  # 最后支持Python 3.6的版本
+
+# Markdown处理
+markdown2==2.4.8  # 最新版本仍支持Python 3.6
+
+# 类型提示支持
+typing-extensions==3.10.0.2  # 最后支持Python 3.6的版本
+
+# 通义千问API（仅在Python 3.8+环境下安装）
+dashscope>=1.10.0; python_version >= "3.8" 

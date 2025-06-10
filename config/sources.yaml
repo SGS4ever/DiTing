@@ -21,10 +21,10 @@ sources:
     category: "tech"
   
   # 综合新闻
-  - name: "中新网国际新闻"
-    url: "https://www.chinanews.com.cn/rss/world.xml"
-    type: "text"
-    category: "news"
+#  - name: "中新网国际新闻"
+#    url: "https://www.chinanews.com.cn/rss/world.xml"
+#    type: "text"
+#    category: "news"
     
   # 图片类新闻
   - name: "国家地理中文网"
