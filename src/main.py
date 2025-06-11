@@ -8,6 +8,8 @@ import time
 from datetime import datetime
 import yaml
 from dotenv import load_dotenv
+import argparse
+import sys
 
 from .rss_parser import RSSParser
 from .content_processor import ContentProcessor
@@ -85,9 +87,10 @@ class DiTing:
             
         except Exception as e:
             self.logger.error(f"处理每日新闻时发生错误: {str(e)}")
+            raise  # 重新抛出异常，确保错误状态能被捕获
             
-    def run(self):
-        """运行服务"""
+    def run_service(self):
+        """以服务模式运行（用于systemd）"""
         # 设置定时任务
         schedule_time = self.config['schedule']['daily_report']
         schedule.every().day.at(schedule_time).do(self.process_daily_news)
@@ -95,13 +98,43 @@ class DiTing:
         self.logger.info(f"谛听服务已启动，将在每天 {schedule_time} 推送资讯摘要")
         
         # 立即执行一次
-        self.process_daily_news()
+        try:
+            self.process_daily_news()
+        except Exception as e:
+            self.logger.error(f"初始执行失败: {str(e)}")
         
         # 运行定时任务
         while True:
             schedule.run_pending()
             time.sleep(60)
+            
+    def run_once(self):
+        """执行一次任务（用于crontab）"""
+        self.logger.info("开始执行单次任务")
+        try:
+            self.process_daily_news()
+            self.logger.info("单次任务执行完成")
+            return True
+        except Exception as e:
+            self.logger.error(f"单次任务执行失败: {str(e)}")
+            return False
+
+def main():
+    parser = argparse.ArgumentParser(description='DiTing RSS聚合器')
+    parser.add_argument('--mode', choices=['service', 'once'], default='once',
+                      help='运行模式：service（服务模式）或once（单次执行）')
+    args = parser.parse_args()
+    
+    try:
+        diting = DiTing()
+        if args.mode == 'service':
+            diting.run_service()
+        else:
+            success = diting.run_once()
+            sys.exit(0 if success else 1)
+    except Exception as e:
+        logging.error(f"程序执行失败: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    diting = DiTing()
-    diting.run() 
+    main() 
