@@ -12,14 +12,18 @@ import markdown2  # 添加markdown转换库
 PY_VERSION = sys.version_info
 USE_DASHSCOPE_SDK = PY_VERSION >= (3, 8)
 
+# 初始化变量
+DASHSCOPE_IMPORT_ERROR = None
+
 # 根据Python版本导入dashscope
 if USE_DASHSCOPE_SDK:
     try:
         from dashscope import Generation
-        DASHSCOPE_IMPORT_ERROR = None
     except ImportError as e:
         DASHSCOPE_IMPORT_ERROR = str(e)
         USE_DASHSCOPE_SDK = False
+else:
+    DASHSCOPE_IMPORT_ERROR = "Python版本不支持DashScope SDK"
 
 class Summarizer:
     def __init__(self, api_key: str):
@@ -104,7 +108,8 @@ class Summarizer:
             ]
             
             self.logger.info(f"准备调用通义千问API生成 {category} 类摘要")
-            
+            self.logger.info(f"dump prompt {prompt}")
+
             if USE_DASHSCOPE_SDK:
                 return self._generate_using_sdk(category, messages)
             else:
@@ -118,18 +123,18 @@ class Summarizer:
         """使用SDK生成摘要"""
         try:
             response = Generation.call(
-                model='qwen-turbo',
+                model='qwen-turbo-2025-04-28',
                 messages=messages,
                 api_key=self.api_key,
                 result_format='message',
-                max_tokens=1500,
+                max_tokens=3000,
                 temperature=0.7,
                 top_p=0.8,
             )
             
             if response.status_code == 200:
                 summary = response.output.choices[0].message.content
-                self.logger.info(f"{category} 类摘要生成成功，长度: {len(summary)} 字符")
+                self.logger.info(f"{category} 类摘要生成成功，响应内容: {summary}")
                 return summary
             else:
                 self.logger.error(f"API调用失败: {response.code} - {response.message}")
@@ -167,7 +172,7 @@ class Summarizer:
                 self.api_url,
                 headers=headers,
                 json=data,
-                timeout=30
+                timeout=90
             )
             
             # 处理响应
@@ -219,6 +224,7 @@ class Summarizer:
    - 关键数据或重要引用使用粗体(**)标记
    - 每条新闻之间使用空行分隔
    - 需要用[链接]给出新闻的原始链接，如果无链接，则指出"原始链接缺失"
+7. 在完成摘要后，你应自己再检查一下摘要的内容是否完整，链接是否有误等
 
 以下是需要总结的新闻：
 

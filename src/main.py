@@ -9,10 +9,10 @@ from datetime import datetime
 import yaml
 from dotenv import load_dotenv
 
-from src.rss_parser import RSSParser
-from src.content_processor import ContentProcessor
-from src.summarizer import Summarizer
-from src.mailer import Mailer
+from .rss_parser import RSSParser
+from .content_processor import ContentProcessor
+from .summarizer import Summarizer
+from .mailer import Mailer
 
 # 加载环境变量
 load_dotenv()
