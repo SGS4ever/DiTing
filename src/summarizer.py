@@ -181,6 +181,7 @@ class Summarizer:
                 if "output" in result and "choices" in result["output"]:
                     summary = result["output"]["choices"][0]["message"]["content"]
                     self.logger.info(f"{category} 类摘要生成成功，长度: {len(summary)} 字符")
+                    self.logger.info(f"dump summary: {summary}")
                     return summary
                 else:
                     self.logger.error(f"API响应格式异常: {result}")
